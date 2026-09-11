@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables & secrets (NEVER commit these)
+.env
+.env.local
+.env.*.local
+db.sqlite3
+db.sqlite3-journal
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Django media files & static uploads
+media/
+# Uncomment static/ if you collectstatic to a local folder outside version control
+# static/
+
+# IDE / Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs & test reports
+*.log
+local_settings.py
+coverage/
+htmlcov/
+.coverage
+.pytest_cache/
