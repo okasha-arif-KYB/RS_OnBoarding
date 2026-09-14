@@ -33,7 +33,7 @@ class ClientViewSet(viewsets.ModelViewSet):
         }
 
         rules_payload = []
-        for rule in Rule.objects.filter(is_active=True):
+        for rule in Rule.objects.filter(is_active=True).order_by("display_order"):
             config = existing.get(rule.key)
             rules_payload.append(
                 {

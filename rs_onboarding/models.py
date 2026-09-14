@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from simple_history.models import HistoricalRecords
 
@@ -24,11 +25,10 @@ class Rule(models.Model):
 
 
 class Client(models.Model):
-    
-
-    id = models.CharField(max_length=64, primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    clinical_system = models.CharField(max_length=64, blank=True)
+    vm = models.CharField(max_length=128, blank=True, default="")
+    sra_account = models.CharField(max_length=64, blank=True, default="")
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
