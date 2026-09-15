@@ -27,8 +27,6 @@ class Rule(models.Model):
 class Client(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    vm = models.CharField(max_length=128, blank=True, default="")
-    sra_account = models.CharField(max_length=64, blank=True, default="")
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)

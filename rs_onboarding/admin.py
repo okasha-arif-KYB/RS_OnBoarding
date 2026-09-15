@@ -12,7 +12,7 @@ class RuleAdmin(admin.ModelAdmin):
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "vm", "sra_account", "is_active", "created_at")
+    list_display = ("id", "name", "is_active", "created_at")
     search_fields = ("id", "name")
 
 

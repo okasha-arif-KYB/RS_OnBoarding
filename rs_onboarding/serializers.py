@@ -23,8 +23,6 @@ class ClientSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
-            "vm",
-            "sra_account",
             "is_active",
             "created_at",
             "updated_at",

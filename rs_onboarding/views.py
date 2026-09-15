@@ -14,7 +14,6 @@ from .serializers import (
 
 
 class RuleViewSet(viewsets.ModelViewSet):
-
     queryset = Rule.objects.all()
     serializer_class = RuleSerializer
 
@@ -23,14 +22,90 @@ class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
 
+    def _get_default_values_for_rule(self, rule, client):
+        schema = rule.field_schema or {}
+        fields = schema.get("fields", [])
+        values = {}
+
+        for fld in fields:
+            field_key = fld.get("fieldKey")
+            default_val = fld.get("defaultValue")
+            if field_key and default_val is not None:
+                values[field_key] = default_val
+
+        # Specific client-aware defaults
+        if rule.key == "dispensingPharmacy":
+            values["source"] = "patientDetails"
+            values["pharmacyName"] = f"{client.name} Pharmacy"
+        elif rule.key == "proactiveTaskForIssueAuthorization":
+            values["route"] = "Team"
+            values["assignment"] = f"{client.name} Team"
+            values["taskType"] = "Medication Review"
+        elif rule.key == "proactiveTaskMedicationReview":
+            values["route"] = "Team"
+            values["assignment"] = f"{client.name} Clinical Team"
+            values["taskType"] = "Medication Review"
+        elif rule.key == "doctorOrGroup":
+            values["mode"] = "combined"
+            values["singleDateEntries"] = [
+                {"id": "sd_1", "date": "2026-10-05", "doctor": "Dr. Ali Khan"}
+            ]
+            values["dateRangeEntries"] = [
+                {
+                    "id": "dr_1",
+                    "startDate": "2026-10-01",
+                    "endDate": "2026-10-07",
+                    "doctor": "Dr. Faisal Ahmed",
+                }
+            ]
+
+        return values
+
+    def perform_create(self, serializer):
+        client = serializer.save()
+        active_rules = Rule.objects.filter(is_active=True).order_by("display_order")
+        configs = []
+        for rule in active_rules:
+            is_enabled = rule.key != "sendRepeatDispensingAsLogicAction"
+            default_vals = self._get_default_values_for_rule(rule, client)
+            configs.append(
+                ClientRuleConfig(
+                    client=client,
+                    rule=rule,
+                    is_enabled=is_enabled,
+                    values=default_vals,
+                )
+            )
+        ClientRuleConfig.objects.bulk_create(configs)
+
     @action(detail=True, methods=["get"], url_path="config")
     def config(self, request, pk=None):
-       
         client = self.get_object()
         existing = {
             rc.rule_id: rc
             for rc in ClientRuleConfig.objects.filter(client=client).select_related("rule")
         }
+
+        # If this client has no configs in DB (e.g. created before seeder/perform_create), auto-populate them
+        if not existing:
+            active_rules = Rule.objects.filter(is_active=True).order_by("display_order")
+            new_configs = []
+            for rule in active_rules:
+                is_enabled = rule.key != "sendRepeatDispensingAsLogicAction"
+                default_vals = self._get_default_values_for_rule(rule, client)
+                new_configs.append(
+                    ClientRuleConfig(
+                        client=client,
+                        rule=rule,
+                        is_enabled=is_enabled,
+                        values=default_vals,
+                    )
+                )
+            ClientRuleConfig.objects.bulk_create(new_configs)
+            existing = {
+                rc.rule_id: rc
+                for rc in ClientRuleConfig.objects.filter(client=client).select_related("rule")
+            }
 
         rules_payload = []
         for rule in Rule.objects.filter(is_active=True).order_by("display_order"):
@@ -54,7 +129,6 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="bulk-config")
     def bulk_config(self, request, pk=None):
-
         client = self.get_object()
         items = request.data.get("configs")
         if not isinstance(items, list) or not items:
