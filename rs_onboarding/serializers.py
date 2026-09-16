@@ -1,58 +1,28 @@
 from rest_framework import serializers
 
-from .models import Client, ClientRuleConfig, Rule
+from .models import InstanceRuleConfig, Rule
 
 
 class RuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rule
-        fields = [
-            "key",
-            "name",
-            "description",
-            "category",
-            "display_order",
-            "is_active",
-            "field_schema",
-        ]
+        fields = ["key", "name", "description", "category", "display_order", "is_active", "field_schema"]
 
 
-class ClientSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Client
-        fields = [
-            "id",
-            "name",
-            "is_active",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "created_at", "updated_at"]
-
-
-class ClientRuleConfigSerializer(serializers.ModelSerializer):
+class InstanceRuleConfigSerializer(serializers.ModelSerializer):
     rule_name = serializers.CharField(source="rule.name", read_only=True)
 
     class Meta:
-        model = ClientRuleConfig
-        fields = [
-            "id",
-            "client",
-            "rule",
-            "rule_name",
-            "is_enabled",
-            "values",
-            "created_at",
-            "updated_at",
-        ]
+        model = InstanceRuleConfig
+        fields = ["id", "instance", "rule", "rule_name", "is_enabled", "values", "created_at", "updated_at"]
         read_only_fields = ["created_at", "updated_at"]
 
     def validate(self, attrs):
         """
-        Validates `values` against the rule's field_schema, using the
-        standard key convention:
-          hasValue -> "value" (must be numeric)
-          hasType  -> "type"  (must be one of typeOptions)
+        Unchanged from before — this is the doctorOrGroup mode-normalization and the
+        hasType/hasValue schema checks. Left in place since it's real validation logic,
+        not the hardcoded default-value stuff you asked to remove. Say the word if you
+        want this stripped too.
         """
         rule = attrs.get("rule") or getattr(self.instance, "rule", None)
         values = attrs.get("values")
@@ -70,16 +40,11 @@ class ClientRuleConfigSerializer(serializers.ModelSerializer):
                         and not values.get("defaultDoctor")
                     )
                 )
-
                 if is_schedule:
                     values.pop("defaultDoctor", None)
                     values.pop("name", None)
-                    has_single = bool(values.get("singleDateEntries")) or bool(
-                        values.get("date")
-                    )
-                    has_range = bool(values.get("dateRangeEntries")) or bool(
-                        values.get("startDate")
-                    )
+                    has_single = bool(values.get("singleDateEntries")) or bool(values.get("date"))
+                    has_range = bool(values.get("dateRangeEntries")) or bool(values.get("startDate"))
                     if has_single and has_range:
                         values["mode"] = "combined"
                     elif has_single:
@@ -97,16 +62,12 @@ class ClientRuleConfigSerializer(serializers.ModelSerializer):
                     values.pop("endDate", None)
 
             schema = rule.field_schema or {}
-
             if schema.get("hasType") and "type" in values:
                 allowed = schema.get("typeOptions", [])
                 if allowed and values["type"] not in allowed:
                     raise serializers.ValidationError(
-                        {
-                            "values": f"'type' must be one of {allowed} for rule '{rule.key}'."
-                        }
+                        {"values": f"'type' must be one of {allowed} for rule '{rule.key}'."}
                     )
-
             if schema.get("hasValue") and "value" in values:
                 if not isinstance(values["value"], (int, float)):
                     raise serializers.ValidationError(
@@ -114,18 +75,3 @@ class ClientRuleConfigSerializer(serializers.ModelSerializer):
                     )
         return attrs
 
-
-class BulkClientRuleConfigItemSerializer(serializers.Serializer):
-    """One item inside a bulk-config request body."""
-
-    rule = serializers.PrimaryKeyRelatedField(queryset=Rule.objects.all())
-    is_enabled = serializers.BooleanField(default=False)
-    values = serializers.JSONField(default=dict)
-
-
-class ClientRuleConfigHistorySerializer(serializers.Serializer):
-    history_id = serializers.IntegerField()
-    history_date = serializers.DateTimeField()
-    history_type = serializers.CharField()
-    is_enabled = serializers.BooleanField()
-    values = serializers.JSONField()

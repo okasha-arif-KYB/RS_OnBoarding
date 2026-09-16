@@ -1,10 +1,10 @@
 from rest_framework.routers import DefaultRouter
 
-from .views import ClientRuleConfigViewSet, ClientViewSet, RuleViewSet
+from .views import GPInstConfigViewSet, InstanceRuleConfigViewSet, RuleViewSet
 
 router = DefaultRouter()
 router.register("rules", RuleViewSet, basename="rule")
-router.register("clients", ClientViewSet, basename="client")
-router.register("client-rule-configs", ClientRuleConfigViewSet, basename="client-rule-config")
+router.register("gp-insts", GPInstConfigViewSet, basename="gp-inst-config")
+router.register("instance-rule-configs", InstanceRuleConfigViewSet, basename="instance-rule-config")
 
 urlpatterns = router.urls
