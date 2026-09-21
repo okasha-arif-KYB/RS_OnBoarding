@@ -100,15 +100,22 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
 
     def config(self, request, inst_id=None):
         """
-        GET /gp-insts/<inst_id>/config/
+        GET /gp-insts/<inst_id>/config/?system=emis
         """
 
         gp_inst = self.get_object()
 
+        requested_system = request.query_params.get("system", "emis").lower()
+        if requested_system in ["systemone", "systmone", "systm_one"]:
+            requested_system = "systm_one"
+        else:
+            requested_system = "emis"
+
         existing = {
             rc.rule_id: rc
             for rc in InstanceRuleConfig.objects.filter(
-                instance=gp_inst
+                instance=gp_inst,
+                clinical_system=requested_system,
             ).select_related("rule")
         }
 
@@ -129,6 +136,7 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
                     "field_schema": rule.field_schema,
                     "config": {
                         "id": config.id if config else None,
+                        "clinical_system": requested_system,
                         "is_enabled": (
                             config.is_enabled
                             if config
@@ -149,6 +157,7 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
                     "inst_id": gp_inst.inst_id,
                     "name": gp_inst.name,
                 },
+                "clinical_system": requested_system,
                 "rules": rules_payload,
             }
         )
@@ -159,6 +168,16 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
         """
 
         gp_inst = self.get_object()
+
+        raw_system = (
+            request.data.get("clinical_system")
+            or request.data.get("system")
+            or request.query_params.get("system", "emis")
+        )
+        if str(raw_system).lower() in ["systemone", "systmone", "systm_one"]:
+            system = "systm_one"
+        else:
+            system = "emis"
 
         items = request.data.get("configs")
 
@@ -188,9 +207,18 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
                     )
                     continue
 
+                item_system = item.get("clinical_system") or system
+                if str(item_system).lower() in ["systemone", "systmone", "systm_one"]:
+                    item_system = "systm_one"
+                else:
+                    item_system = "emis"
+
+                rule_key = item.get("rule") or item.get("rule_key") or item.get("key")
+
                 payload = {
                     "instance": gp_inst.pk,
-                    "rule": item.get("rule"),
+                    "rule": rule_key,
+                    "clinical_system": item_system,
                     "is_enabled": item.get(
                         "is_enabled",
                         True,
@@ -204,7 +232,8 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
                 existing_config = (
                     InstanceRuleConfig.objects.filter(
                         instance=gp_inst,
-                        rule_id=payload["rule"],
+                        rule_id=rule_key,
+                        clinical_system=item_system,
                     ).first()
                 )
 
@@ -218,7 +247,7 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
                     errors.append(
                         {
                             "index": idx,
-                            "rule": payload["rule"],
+                            "rule": rule_key,
                             "errors": serializer.errors,
                         }
                     )
@@ -240,7 +269,10 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
                 )
 
         return Response(
-            {"updated": results},
+            {
+                "clinical_system": system,
+                "updated": results,
+            },
             status=status.HTTP_200_OK,
         )
 
@@ -259,11 +291,19 @@ class InstanceRuleConfigViewSet(viewsets.ModelViewSet):
 
         inst_id = self.request.query_params.get("instance")
         rule_key = self.request.query_params.get("rule")
+        system = (
+            self.request.query_params.get("clinical_system")
+            or self.request.query_params.get("system")
+        )
 
         if inst_id:
             qs = qs.filter(instance__inst_id=inst_id)
 
         if rule_key:
             qs = qs.filter(rule_id=rule_key)
+
+        if system:
+            clean_sys = "systm_one" if str(system).lower() in ["systemone", "systmone", "systm_one"] else "emis"
+            qs = qs.filter(clinical_system=clean_sys)
 
         return qs

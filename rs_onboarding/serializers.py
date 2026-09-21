@@ -52,6 +52,7 @@ class InstanceRuleConfigSerializer(serializers.ModelSerializer):
             "instance",
             "rule",
             "rule_name",
+            "clinical_system",
             "is_enabled",
             "values",
             "created_at",

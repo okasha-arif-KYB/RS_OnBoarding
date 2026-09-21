@@ -1,15 +1,17 @@
 from django.db import models
 from simple_history.models import HistoricalRecords
+
+
 class GPEntity(models.Model):
     name = models.CharField(max_length=250, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-
     def __str__(self):
-        return f'{self.name}'
-    
+        return f"{self.name}"
+
+
 class GPInst(models.Model):
-    entity = models.ForeignKey(GPEntity, on_delete=models.SET_NULL, null=True, related_name='instances')    
+    entity = models.ForeignKey(GPEntity, on_delete=models.SET_NULL, null=True, related_name="instances")    
     name = models.CharField(max_length=255, null=True, unique=True)
     inst_id = models.CharField(max_length=35, null=True, blank=True, unique=True)
     address = models.CharField(max_length=255, null=True, blank=True, unique=True)
@@ -21,7 +23,8 @@ class GPInst(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.name}'
+        return f"{self.name}"
+
 
 class Rule(models.Model):
     key = models.CharField(max_length=64, primary_key=True)  # e.g. "etpCheck"
@@ -53,6 +56,11 @@ class Rule(models.Model):
         return values
 
 
+class ClinicalSystemChoice(models.TextChoices):
+    EMIS = "emis", "EMIS Web"
+    SYSTM_ONE = "systm_one", "SystmOne"
+
+
 class InstanceRuleConfig(models.Model):
     instance = models.ForeignKey(
         GPInst,
@@ -64,6 +72,12 @@ class InstanceRuleConfig(models.Model):
         on_delete=models.PROTECT,
         related_name="instance_configs",
     )
+    clinical_system = models.CharField(
+        max_length=20,
+        choices=ClinicalSystemChoice.choices,
+        default=ClinicalSystemChoice.EMIS,
+        db_index=True,
+    )
     is_enabled = models.BooleanField(default=True)
     values = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -72,7 +86,7 @@ class InstanceRuleConfig(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["instance", "rule"],
-                name="unique_instance_rule",
+                fields=["instance", "rule", "clinical_system"],
+                name="unique_instance_rule_system",
             )
         ]
