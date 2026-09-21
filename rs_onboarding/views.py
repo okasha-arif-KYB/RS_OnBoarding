@@ -260,12 +260,16 @@ class InstanceRuleConfigViewSet(viewsets.ModelViewSet):
 
         inst_id = self.kwargs.get("inst_id")
         rule_key = self.request.query_params.get("rule")
+        system_type = self.request.query_params.get("system_type")
 
         if inst_id:
             qs = qs.filter(instance__inst_id=inst_id)
 
         if rule_key:
             qs = qs.filter(rule_id=rule_key)
+
+        if system_type:
+            qs = qs.filter(system_type=system_type)
 
         return qs
 
