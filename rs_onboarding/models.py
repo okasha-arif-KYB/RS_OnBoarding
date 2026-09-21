@@ -54,10 +54,10 @@ class Rule(models.Model):
 
 
 class InstanceRuleConfig(models.Model):
-    SYSTEM1 = "system1"
+    SYSTEM1 = "systemone"
     SYSTEM2 = "emis"
     SYSTEM_TYPE_CHOICES = [
-        (SYSTEM1, "System 1"),
+        (SYSTEM1, "System One"),
         (SYSTEM2, "Emis"),
     ]
 
