@@ -32,6 +32,7 @@ class RuleSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "category",
+            "rule_type",
             "display_order",
             "is_active",
             "field_schema",
@@ -59,6 +60,23 @@ class InstanceRuleConfigSerializer(serializers.ModelSerializer):
         ]
 
         read_only_fields = [
+            "created_at",
+            "updated_at",
+        ]
+        fields = [
+            "id",
+            "instance",
+            "rule",
+            "rule_name",
+            "is_enabled",
+            "system_type",
+            "values",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "instance",   # comes from the URL, not the request body
             "created_at",
             "updated_at",
         ]

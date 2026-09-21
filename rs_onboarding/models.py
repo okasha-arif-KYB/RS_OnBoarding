@@ -28,10 +28,10 @@ class Rule(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=64)  # "timing", "safety", "comments"...
+    rule_type = models.CharField(max_length=64, blank=True, null=True)  # e.g. "radiobutton", "dropdown"
     display_order = models.PositiveSmallIntegerField(default=0)
     is_active = models.BooleanField(default=True)  # soft-disable in the catalog
     field_schema = models.JSONField(default=dict, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -54,6 +54,13 @@ class Rule(models.Model):
 
 
 class InstanceRuleConfig(models.Model):
+    SYSTEM1 = "system1"
+    SYSTEM2 = "emis"
+    SYSTEM_TYPE_CHOICES = [
+        (SYSTEM1, "System 1"),
+        (SYSTEM2, "Emis"),
+    ]
+
     instance = models.ForeignKey(
         GPInst,
         on_delete=models.CASCADE,
@@ -65,6 +72,12 @@ class InstanceRuleConfig(models.Model):
         related_name="instance_configs",
     )
     is_enabled = models.BooleanField(default=True)
+    system_type = models.CharField(
+        max_length=16,
+        choices=SYSTEM_TYPE_CHOICES,
+        blank=True,
+        null=True,
+    )
     values = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

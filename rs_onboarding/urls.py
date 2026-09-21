@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .views import (
-    GPInstConfigViewSet,
+    InstanceConfigViewSet,
     InstanceRuleConfigViewSet,
     RuleViewSet,
 )
@@ -11,51 +11,24 @@ from .views import (
 # ViewSet instances
 # ---------------------------------------------------------
 
-rule_list = RuleViewSet.as_view(
-    {
-        "get": "list",
-        "post": "create",
-    }
-)
-
-rule_detail = RuleViewSet.as_view(
-    {
-        "get": "retrieve",
-        "put": "update",
-        "patch": "partial_update",
-        "delete": "destroy",
-    }
-)
-
-
-gp_inst_list = GPInstConfigViewSet.as_view(
-    {
-        "get": "list",
-    }
-)
-
-
-gp_inst_config = GPInstConfigViewSet.as_view(
-    {
-        "get": "config",
-    }
-)
-
-
-gp_inst_bulk_config = GPInstConfigViewSet.as_view(
+instance_bulk_config = InstanceConfigViewSet.as_view(
     {
         "post": "bulk_config",
     }
 )
 
 
-instance_rule_config_list = (
-    InstanceRuleConfigViewSet.as_view(
-        {
-            "get": "list",
-            "post": "create",
-        }
-    )
+instance_config = InstanceConfigViewSet.as_view(
+    {
+        "get": "config",
+    }
+)
+
+
+instance_list = InstanceConfigViewSet.as_view(
+    {
+        "get": "list",
+    }
 )
 
 
@@ -71,7 +44,83 @@ instance_rule_config_detail = (
 )
 
 
+instance_rule_config_list = (
+    InstanceRuleConfigViewSet.as_view(
+        {
+            "get": "list",
+            "post": "create",
+        }
+    )
+)
+
+
+rule_detail = RuleViewSet.as_view(
+    {
+        "get": "retrieve",
+        "put": "update",
+        "patch": "partial_update",
+        "delete": "destroy",
+    }
+)
+
+
+rule_list = RuleViewSet.as_view(
+    {
+        "get": "list",
+        "post": "create",
+    }
+)
+
+
 urlpatterns = [
+
+    # -----------------------------------------------------
+    # Instances
+    # -----------------------------------------------------
+
+    path(
+        "instances/",
+        instance_list,
+        name="instance_list",
+    ),
+
+    # Example:
+    # POST /instances/ABC001/bulk_config/
+
+    path(
+        "instances/<str:inst_id>/bulk_config/",
+        instance_bulk_config,
+        name="instance_bulk_config",
+    ),
+
+    # Example:
+    # GET /instances/ABC001/config/
+
+    path(
+        "instances/<str:inst_id>/config/",
+        instance_config,
+        name="instance_config",
+    ),
+
+    # Rule configs nested under their instance.
+    # Example:
+    # GET  /instances/ABC001/rule_configs/
+    # POST /instances/ABC001/rule_configs/
+
+    path(
+        "instances/<str:inst_id>/rule_configs/",
+        instance_rule_config_list,
+        name="instance_rule_config_list",
+    ),
+
+    # Example:
+    # GET/PUT/PATCH/DELETE /instances/ABC001/rule_configs/7/
+
+    path(
+        "instances/<str:inst_id>/rule_configs/<int:pk>/",
+        instance_rule_config_detail,
+        name="instance_rule_config_detail",
+    ),
 
     # -----------------------------------------------------
     # Rules
@@ -80,56 +129,12 @@ urlpatterns = [
     path(
         "rules/",
         rule_list,
-        name="rule-list",
+        name="rule_list",
     ),
 
     path(
         "rules/<str:pk>/",
         rule_detail,
-        name="rule-detail",
-    ),
-
-    # -----------------------------------------------------
-    # GP Instances
-    # -----------------------------------------------------
-
-    path(
-        "gp-insts/",
-        gp_inst_list,
-        name="gp-inst-list",
-    ),
-
-    # Example:
-    # GET /gp-insts/ABC001/config/
-
-    path(
-        "gp-insts/<str:inst_id>/config/",
-        gp_inst_config,
-        name="gp-inst-config",
-    ),
-
-    # Example:
-    # POST /gp-insts/ABC001/bulk-config/
-
-    path(
-        "gp-insts/<str:inst_id>/bulk-config/",
-        gp_inst_bulk_config,
-        name="gp-inst-bulk-config",
-    ),
-
-    # -----------------------------------------------------
-    # Individual Instance Rule Configs
-    # -----------------------------------------------------
-
-    path(
-        "instance-rule-configs/",
-        instance_rule_config_list,
-        name="instance-rule-config-list",
-    ),
-
-    path(
-        "instance-rule-configs/<int:pk>/",
-        instance_rule_config_detail,
-        name="instance-rule-config-detail",
+        name="rule_detail",
     ),
 ]

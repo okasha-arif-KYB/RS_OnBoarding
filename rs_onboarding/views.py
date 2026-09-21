@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
@@ -15,7 +16,7 @@ class RuleViewSet(viewsets.ModelViewSet):
     serializer_class = RuleSerializer
 
 
-class GPInstConfigViewSet(viewsets.GenericViewSet):
+class InstanceConfigViewSet(viewsets.GenericViewSet):
     """
     GPInst endpoints.
 
@@ -103,12 +104,12 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
         GET /gp-insts/<inst_id>/config/
         """
 
-        gp_inst = self.get_object()
+        instance = self.get_object()
 
         existing = {
             rc.rule_id: rc
             for rc in InstanceRuleConfig.objects.filter(
-                instance=gp_inst
+                instance=instance
             ).select_related("rule")
         }
 
@@ -146,8 +147,8 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
         return Response(
             {
                 "instance": {
-                    "inst_id": gp_inst.inst_id,
-                    "name": gp_inst.name,
+                    "inst_id": instance.inst_id,
+                    "name": instance.name,
                 },
                 "rules": rules_payload,
             }
@@ -155,10 +156,10 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
 
     def bulk_config(self, request, inst_id=None):
         """
-        POST /gp-insts/<inst_id>/bulk-config/
+        POST /instances/<inst_id>/bulk_config/
         """
 
-        gp_inst = self.get_object()
+        instance = self.get_object()
 
         items = request.data.get("configs")
 
@@ -189,12 +190,12 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
                     continue
 
                 payload = {
-                    "instance": gp_inst.pk,
                     "rule": item.get("rule"),
                     "is_enabled": item.get(
                         "is_enabled",
                         True,
                     ),
+                    "system_type": item.get("system_type"),
                     "values": item.get(
                         "values",
                         {},
@@ -203,7 +204,7 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
 
                 existing_config = (
                     InstanceRuleConfig.objects.filter(
-                        instance=gp_inst,
+                        instance=instance,
                         rule_id=payload["rule"],
                     ).first()
                 )
@@ -225,7 +226,7 @@ class GPInstConfigViewSet(viewsets.GenericViewSet):
 
                     continue
 
-                saved = serializer.save()
+                saved = serializer.save(instance=instance)
 
                 results.append(
                     InstanceRuleConfigSerializer(saved).data
@@ -257,7 +258,7 @@ class InstanceRuleConfigViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        inst_id = self.request.query_params.get("instance")
+        inst_id = self.kwargs.get("inst_id")
         rule_key = self.request.query_params.get("rule")
 
         if inst_id:
@@ -267,3 +268,15 @@ class InstanceRuleConfigViewSet(viewsets.ModelViewSet):
             qs = qs.filter(rule_id=rule_key)
 
         return qs
+
+    def _get_instance(self):
+        return get_object_or_404(
+            GPInst,
+            inst_id=self.kwargs.get("inst_id"),
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(instance=self._get_instance())
+
+    def perform_update(self, serializer):
+        serializer.save(instance=self._get_instance())
