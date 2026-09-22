@@ -23,6 +23,17 @@ class GPInst(models.Model):
     def __str__(self):
         return f'{self.name}'
 
+IS_DISABLED_NONE = "N"
+IS_DISABLED_SYSTEM1 = "S"
+IS_DISABLED_EMIS = "E"
+IS_DISABLED_BOTH = "B"
+IS_DISABLED_CHOICES = [
+        (IS_DISABLED_NONE, "None"),
+        (IS_DISABLED_SYSTEM1, "System1"),
+        (IS_DISABLED_EMIS, "Emis"),
+        (IS_DISABLED_BOTH, "Both"),
+    ]
+
 class Rule(models.Model):
     key = models.CharField(max_length=64, primary_key=True)  # e.g. "etpCheck"
     name = models.CharField(max_length=255)
@@ -31,9 +42,10 @@ class Rule(models.Model):
     rule_type = models.CharField(max_length=64, blank=True, null=True)  # e.g. "radiobutton", "dropdown"
     display_order = models.PositiveSmallIntegerField(default=0)
     is_active = models.BooleanField(default=True)  # soft-disable in the catalog
-    is_disabled = models.PositiveSmallIntegerField(
-        choices=[(0, "Enabled"), (1, "Disabled")],
-        default=0,
+    is_disabled = models.CharField(
+        max_length=1,
+        choices=IS_DISABLED_CHOICES,
+        default=IS_DISABLED_NONE,
     )
     field_schema = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
