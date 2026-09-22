@@ -31,6 +31,10 @@ class Rule(models.Model):
     rule_type = models.CharField(max_length=64, blank=True, null=True)  # e.g. "radiobutton", "dropdown"
     display_order = models.PositiveSmallIntegerField(default=0)
     is_active = models.BooleanField(default=True)  # soft-disable in the catalog
+    is_disabled = models.PositiveSmallIntegerField(
+        choices=[(0, "Enabled"), (1, "Disabled")],
+        default=0,
+    )
     field_schema = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

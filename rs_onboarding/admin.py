@@ -5,8 +5,8 @@ from .models import GPEntity, GPInst, InstanceRuleConfig, Rule
 
 @admin.register(Rule)
 class RuleAdmin(admin.ModelAdmin):
-    list_display = ("key", "name", "category", "rule_type", "display_order", "is_active")
-    list_filter = ("category", "rule_type", "is_active")
+    list_display = ("key", "name", "category", "rule_type", "display_order", "is_active", "is_disabled")
+    list_filter = ("category", "rule_type", "is_active", "is_disabled")
     search_fields = ("key", "name")
 
 

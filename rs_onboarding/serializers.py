@@ -35,6 +35,7 @@ class RuleSerializer(serializers.ModelSerializer):
             "rule_type",
             "display_order",
             "is_active",
+            "is_disabled",
             "field_schema",
         ]
 
