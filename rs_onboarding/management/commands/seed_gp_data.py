@@ -1,4 +1,5 @@
-from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from rs_onboarding.models import GPEntity, GPInst, InstanceRuleConfig, Rule
@@ -309,7 +310,34 @@ INSTANCE_DATA = [
 
 
 class Command(BaseCommand):
-    help = "Seed GPEntity and GPInst records and backfill InstanceRuleConfig defaults for active rules."
+    help = (
+        "Seed GPEntity and GPInst records, backfill InstanceRuleConfig "
+        "defaults for active rules, and create/link a default admin user "
+        "with access to every seeded instance."
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--email",
+            default="admin@example.com",
+            help="Email for the default seeded user (default: admin@example.com).",
+        )
+        parser.add_argument(
+            "--password",
+            default="changeme123",
+            help="Password for the default seeded user (default: changeme123). "
+                 "CHANGE THIS in anything beyond local dev.",
+        )
+        parser.add_argument(
+            "--no-superuser",
+            action="store_true",
+            help="Create the user as a regular (non-admin) user instead of a superuser.",
+        )
+        parser.add_argument(
+            "--skip-user",
+            action="store_true",
+            help="Skip user creation/linking entirely (only seed entities/instances).",
+        )
 
     def handle(self, *args, **options):
         with transaction.atomic():
@@ -345,6 +373,9 @@ class Command(BaseCommand):
 
             self._backfill_rule_configs(insts)
 
+            if not options["skip_user"]:
+                self._seed_user(insts, options)
+
     def _backfill_rule_configs(self, insts):
         """
         Populate InstanceRuleConfig entries for active rules where missing.
@@ -369,9 +400,65 @@ class Command(BaseCommand):
         ]
 
         InstanceRuleConfig.objects.bulk_create(new_configs)
+
+        if not active_rules:
+            self.stdout.write(
+                self.style.WARNING(
+                    "No active Rule rows found — run your rules-seed command "
+                    "BEFORE this one, or InstanceRuleConfig rows will be empty."
+                )
+            )
+
         self.stdout.write(
             self.style.SUCCESS(
                 f"Backfilled {len(new_configs)} InstanceRuleConfig rows "
                 f"({len(insts)} instances x {len(active_rules)} rules, minus existing)."
             )
         )
+
+    def _seed_user(self, insts, options):
+        """
+        Create (or fetch) a default user and grant it access to every
+        instance seeded in this run, via User.instances (M2M -> GPInst).
+        """
+        User = get_user_model()
+
+        email = options["email"]
+        password = options["password"]
+        make_superuser = not options["no_superuser"]
+
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "is_admin": make_superuser,
+            },
+        )
+
+        if created:
+            user.set_password(password)
+            user.save()
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Created user: {email} "
+                    f"({'superuser/admin' if make_superuser else 'regular user'})"
+                )
+            )
+        else:
+            self.stdout.write(f"Exists  user: {email} (leaving password unchanged)")
+
+        user.instances.add(*insts)
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Linked user '{email}' to {len(insts)} instance(s) "
+                f"(user.instances.count() = {user.instances.count()})."
+            )
+        )
+
+        if created and password == "changeme123":
+            self.stdout.write(
+                self.style.WARNING(
+                    "Using the default password 'changeme123' — pass "
+                    "--password=<something> next time for anything shared."
+                )
+            )
